@@ -24,6 +24,15 @@ describe('McpUnityError', () => {
       expect(error).toBeInstanceOf(Error);
       expect(error).toBeInstanceOf(McpUnityError);
     });
+
+    it('should create busy errors with details', () => {
+      const details = { retryable: true, activeOperation: 'update_gameobject' };
+      const error = new McpUnityError(ErrorType.BUSY, 'Writer is busy', details);
+
+      expect(error.type).toBe(ErrorType.BUSY);
+      expect(error.message).toBe('Writer is busy');
+      expect(error.details).toEqual(details);
+    });
   });
 
   describe('toJSON', () => {
@@ -48,6 +57,24 @@ describe('McpUnityError', () => {
         type: ErrorType.TIMEOUT,
         message: 'Request timed out',
         details: undefined,
+      });
+    });
+
+    it('should serialize busy errors without losing details', () => {
+      const error = new McpUnityError(ErrorType.BUSY, 'Writer is busy', {
+        retryable: true,
+        activeOperation: 'update_gameobject',
+      });
+
+      const json = error.toJSON();
+
+      expect(json).toEqual({
+        type: ErrorType.BUSY,
+        message: 'Writer is busy',
+        details: {
+          retryable: true,
+          activeOperation: 'update_gameobject',
+        },
       });
     });
   });
@@ -84,6 +111,7 @@ describe('handleError', () => {
 
 describe('ErrorType', () => {
   it('should have all expected error types', () => {
+    expect(ErrorType.BUSY).toBe('busy_error');
     expect(ErrorType.CONNECTION).toBe('connection_error');
     expect(ErrorType.TOOL_EXECUTION).toBe('tool_execution_error');
     expect(ErrorType.RESOURCE_FETCH).toBe('resource_fetch_error');
