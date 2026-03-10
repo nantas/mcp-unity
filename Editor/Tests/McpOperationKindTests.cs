@@ -46,5 +46,23 @@ namespace McpUnity.Tests
         {
             Assert.AreEqual(McpOperationKind.Read, new FakeResource().OperationKind);
         }
+
+        [Test]
+        public void GetGameObjectTool_IsRead()
+        {
+            Assert.AreEqual(McpOperationKind.Read, new GetGameObjectTool().OperationKind);
+        }
+
+        [Test]
+        public void GetSceneInfoTool_IsRead()
+        {
+            Assert.AreEqual(McpOperationKind.Read, new GetSceneInfoTool().OperationKind);
+        }
+
+        [Test]
+        public void BatchExecuteTool_IsCompositeWrite()
+        {
+            Assert.AreEqual(McpOperationKind.CompositeWrite, new BatchExecuteTool(null).OperationKind);
+        }
     }
 }

@@ -24,6 +24,7 @@ namespace McpUnity.Tools
             Name = "batch_execute";
             Description = "Executes multiple tool operations in a single batch request. Reduces round-trips and enables atomic operations.";
             IsAsync = true;
+            OperationKind = McpOperationKind.CompositeWrite;
         }
 
         public override void ExecuteAsync(JObject parameters, TaskCompletionSource<JObject> tcs)

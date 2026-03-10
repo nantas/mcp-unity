@@ -16,6 +16,7 @@ namespace McpUnity.Tools
         {
             Name = "get_scene_info";
             Description = "Gets information about the active scene including name, path, dirty state, root object count, and loaded state";
+            OperationKind = McpOperationKind.Read;
         }
 
         /// <summary>

@@ -17,6 +17,7 @@ namespace McpUnity.Tools
         {
             Name = "get_gameobject";
             Description = "Retrieves detailed information about a specific GameObject by instance ID, name, or hierarchical path (e.g., \"Parent/Child/MyObject\"). Returns all component properties including Transform position, rotation, scale, and more.";
+            OperationKind = McpOperationKind.Read;
         }
 
         /// <summary>
@@ -83,5 +84,4 @@ namespace McpUnity.Tools
         }
     }
 }
-
 
