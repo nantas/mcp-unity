@@ -14,6 +14,9 @@
 - **Unity WebSocket endpoint**: `ws://localhost:8090/McpUnity` by default.
 - **Config file**: `ProjectSettings/McpUnitySettings.json` (written/read by Unity; read opportunistically by Node).
 - **Execution thread**: Tool/resource execution is dispatched via `EditorCoroutineUtility` and runs on the **Unity main thread**. Keep synchronous work short; use async patterns for long work.
+- **Connection policy**: multiple WebSocket clients may coexist; Unity no longer kicks the previous client when a new one connects.
+- **Execution policy**: phase 1 uses single-writer admission only. `Read` operations pass through; conflicting `Write` / `CompositeWrite` operations return `busy_error`.
+- **Error boundary**: `busy_error` is a normal request response and must not trigger Node reconnect logic.
 
 ### Repo layout (where to change what)
 ```
@@ -108,6 +111,7 @@ Node reads config from `../ProjectSettings/McpUnitySettings.json` relative to **
 - **Port mismatch**: Unity default is **8090**; update docs/config if you change it.
 - **Name mismatch**: Node `toolName`/`resourceName` must equal Unity `Name` exactly, or Unity responds `unknown_method`.
 - **Long main-thread work**: synchronous `Execute()` blocks the Unity editor; use async patterns for heavy operations.
+- **Writer conflicts**: phase 1 does not queue conflicting writes. MCP callers must handle `busy_error` as a retryable business response.
 - **Remote connections**: Unity must bind `0.0.0.0` (`AllowRemoteConnections=true`) and Node must target the correct host (`UNITY_HOST`).
 - **Unity domain reload**: the server stops during script reloads and may restart; avoid relying on persistent in-memory state across reloads.
 - **Multiplayer Play Mode**: Clone instances automatically skip server startup; only the main editor hosts the MCP server.

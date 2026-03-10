@@ -43,6 +43,12 @@
 
 MCP Unity 是 Model Context Protocol 在 Unity 编辑器中的实现，允许 AI 助手与您的 Unity 项目交互。这个包提供了 Unity 和实现 MCP 协议的 Node.js 服务器之间的桥梁，使 Claude、Windsurf 和 Cursor 等 AI 代理能够在 Unity 编辑器中执行操作。
 
+## 连接行为
+
+- 多个 MCP / Node 客户端现在可以同时连接到同一个 Unity Editor。
+- 第一阶段采用“单写准入”策略：读操作可继续正常执行，但冲突的写操作会返回 `busy_error`，而不是挤掉其他客户端连接。
+- `busy_error` 是正常的请求响应。MCP 客户端应将其视为可重试的业务反馈，而不是需要触发重连的传输故障。
+
 ## 功能
 
 ### IDE 集成 - 包缓存访问

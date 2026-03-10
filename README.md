@@ -43,6 +43,12 @@
 
 MCP Unity is an implementation of the Model Context Protocol for Unity Editor, allowing AI assistants to interact with your Unity projects. This package provides a bridge between Unity and a Node.js server that implements the MCP protocol, enabling AI agents like Cursor, Windsurf, Claude Code, Codex CLI, GitHub Copilot, and Google Antigravity to execute operations within the Unity Editor.
 
+## Connection Behavior
+
+- Multiple MCP/Node clients can stay connected to the same Unity Editor at the same time.
+- Phase 1 uses single-writer admission: read operations continue normally, but conflicting write operations return `busy_error` instead of disconnecting another client.
+- `busy_error` is a normal request response. MCP clients should treat it as retryable business feedback, not as a transport failure that requires reconnecting.
+
 ## Features
 
 ### IDE Integration - Package Cache Access
