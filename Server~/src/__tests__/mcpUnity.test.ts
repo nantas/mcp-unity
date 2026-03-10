@@ -5,6 +5,7 @@ import { registerTransformTools } from '../tools/transformTools.js';
 import path from 'path';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import { mapUnityResponseError } from '../unity/mcpUnity.js';
 
 describe('McpUnityError integration', () => {
   it('should create proper error for connection issues', () => {
@@ -18,6 +19,21 @@ describe('McpUnityError integration', () => {
     const error = new McpUnityError(ErrorType.TIMEOUT, 'Request timed out');
 
     expect(error.type).toBe('timeout_error');
+  });
+
+  it('maps busy_error responses to ErrorType.BUSY', () => {
+    const error = mapUnityResponseError({
+      type: 'busy_error',
+      message: 'Another write operation is already in progress',
+      details: { retryable: true, activeOperation: 'update_gameobject' }
+    });
+
+    expect(error.type).toBe(ErrorType.BUSY);
+    expect(error.message).toBe('Another write operation is already in progress');
+    expect(error.details).toEqual({
+      retryable: true,
+      activeOperation: 'update_gameobject'
+    });
   });
 });
 

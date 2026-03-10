@@ -32,6 +32,22 @@ interface UnityResponse {
   };
 }
 
+export function mapUnityResponseError(error: UnityResponse['error']): McpUnityError {
+  if (error?.type === ErrorType.BUSY) {
+    return new McpUnityError(
+      ErrorType.BUSY,
+      error.message || 'Unity writer is busy',
+      error.details
+    );
+  }
+
+  return new McpUnityError(
+    ErrorType.TOOL_EXECUTION,
+    error?.message || 'Unknown error',
+    error?.details
+  );
+}
+
 /**
  * Connection state change callback type
  */
@@ -268,11 +284,7 @@ export class McpUnity {
         this.pendingRequests.delete(response.id);
 
         if (response.error) {
-          request.reject(new McpUnityError(
-            ErrorType.TOOL_EXECUTION,
-            response.error.message || 'Unknown error',
-            response.error.details
-          ));
+          request.reject(mapUnityResponseError(response.error));
         } else {
           request.resolve(response.result);
         }
