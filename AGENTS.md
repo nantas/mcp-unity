@@ -38,6 +38,7 @@
 ### Quickstart (local dev)
 - **Unity side**
   - Open the Unity project that has this package installed.
+  - For active development, prefer linking this repo into the host Unity project at `Packages/com.gamelovers.mcp-unity` instead of using a Package Manager git dependency.
   - Ensure the server is running (auto-start is controlled by `McpUnitySettings.AutoStartServer`).
   - Settings persist in `ProjectSettings/McpUnitySettings.json`.
 
@@ -112,6 +113,7 @@ Node reads config from `../ProjectSettings/McpUnitySettings.json` relative to **
 - **Name mismatch**: Node `toolName`/`resourceName` must equal Unity `Name` exactly, or Unity responds `unknown_method`.
 - **Long main-thread work**: synchronous `Execute()` blocks the Unity editor; use async patterns for heavy operations.
 - **Writer conflicts**: phase 1 does not queue conflicting writes. MCP callers must handle `busy_error` as a retryable business response.
+- **Host-project install mode**: for this fork, prefer a local embedded package path (`Packages/com.gamelovers.mcp-unity`) via symlink for development or copied snapshot for personal installation, and keep it ignored in the host project's `.gitignore`.
 - **Remote connections**: Unity must bind `0.0.0.0` (`AllowRemoteConnections=true`) and Node must target the correct host (`UNITY_HOST`).
 - **Unity domain reload**: the server stops during script reloads and may restart; avoid relying on persistent in-memory state across reloads.
 - **Multiplayer Play Mode**: Clone instances automatically skip server startup; only the main editor hosts the MCP server.

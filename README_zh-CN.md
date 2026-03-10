@@ -49,6 +49,16 @@ MCP Unity 是 Model Context Protocol 在 Unity 编辑器中的实现，允许 AI
 - 第一阶段采用“单写准入”策略：读操作可继续正常执行，但冲突的写操作会返回 `busy_error`，而不是挤掉其他客户端连接。
 - `busy_error` 是正常的请求响应。MCP 客户端应将其视为可重试的业务反馈，而不是需要触发重连的传输故障。
 
+## 推荐的本地安装模式
+
+这个 fork 现在更推荐本地嵌入式包工作流，而不是依赖 Unity Package Manager 的共享依赖声明。
+
+- 开发模式：把当前源码仓库软链接到 `Packages/com.gamelovers.mcp-unity`
+- 发布模式：把构建完成的快照复制到 `Packages/com.gamelovers.mcp-unity`
+- 宿主工程的 `.gitignore` 应忽略 `/Packages/com.gamelovers.mcp-unity`
+
+完整流程与辅助脚本见 [docs/development-installation.md](docs/development-installation.md)。
+
 ## 功能
 
 ### IDE 集成 - 包缓存访问
@@ -477,7 +487,7 @@ MCP Unity 为开发人员、美术和项目经理提供了多个优势：
 <summary><span style="font-size: 1.1em; font-weight: bold;">为什么我无法连接到 MCP Unity？</span></summary>
 
 - 确认 WebSocket 服务器已启动（在 Unity 的 Server Window）
-- 从 MCP 客户端发送一条控制台日志以强制重连
+- 如果写请求返回 `busy_error`，应在当前写操作完成后重试，而不是强制重连
 - 在 Unity Editor MCP Server 窗口更改端口号（Tools > MCP Unity > Server Window）
 
 </details>

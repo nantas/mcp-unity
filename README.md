@@ -49,6 +49,16 @@ MCP Unity is an implementation of the Model Context Protocol for Unity Editor, a
 - Phase 1 uses single-writer admission: read operations continue normally, but conflicting write operations return `busy_error` instead of disconnecting another client.
 - `busy_error` is a normal request response. MCP clients should treat it as retryable business feedback, not as a transport failure that requires reconnecting.
 
+## Recommended Local Installation Modes
+
+This fork now recommends local embedded-package workflows instead of relying on Unity Package Manager dependency declarations for day-to-day development or personal installation.
+
+- Development mode: symlink this repository into `Packages/com.gamelovers.mcp-unity`
+- Release mode: copy a built snapshot into `Packages/com.gamelovers.mcp-unity`
+- Host project `.gitignore` should ignore `/Packages/com.gamelovers.mcp-unity`
+
+See [docs/development-installation.md](docs/development-installation.md) for the full workflow and the helper scripts.
+
 ## Features
 
 ### IDE Integration - Package Cache Access
@@ -490,7 +500,7 @@ Yes, MCP Unity is an open-source project distributed under the MIT License. You 
 <summary><span style="font-size: 1.1em; font-weight: bold;">Why am I unable to connect to MCP Unity?</span></summary>
 
 - Ensure the WebSocket server is running (check the Server Window in Unity)
-- Send a console log message from MCP client to force a reconnection between MCP client and Unity server
+- If a write request is rejected with `busy_error`, retry after the active write operation finishes instead of forcing a reconnect
 - Change the port number in the Unity Editor MCP Server window. (Tools > MCP Unity > Server Window)
 
 </details>
