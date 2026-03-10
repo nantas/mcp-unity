@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using Newtonsoft.Json;
@@ -49,12 +47,57 @@ namespace McpUnity.Unity
                 }
             };
         }
+
+        /// <summary>
+        /// Create a busy response for conflicting write operations.
+        /// </summary>
+        public static JObject CreateBusyResponse(string activeOperation, string activeClientName)
+        {
+            var message = "Another write operation is already in progress.";
+
+            if (!string.IsNullOrEmpty(activeOperation))
+            {
+                message += $" Active operation: {activeOperation}.";
+            }
+
+            if (!string.IsNullOrEmpty(activeClientName))
+            {
+                message += $" Active client: {activeClientName}.";
+            }
+
+            var details = new JObject
+            {
+                ["retryable"] = true
+            };
+
+            if (!string.IsNullOrEmpty(activeOperation))
+            {
+                details["activeOperation"] = activeOperation;
+            }
+
+            if (!string.IsNullOrEmpty(activeClientName))
+            {
+                details["activeClientName"] = activeClientName;
+            }
+
+            return new JObject
+            {
+                ["error"] = new JObject
+                {
+                    ["type"] = "busy_error",
+                    ["message"] = message,
+                    ["details"] = details
+                }
+            };
+        }
         
         /// <summary>
         /// Handle incoming messages from WebSocket clients
         /// </summary>
         protected override async void OnMessage(MessageEventArgs e)
         {
+            var hasWriteLease = false;
+
             try
             {
                 McpLogger.LogInfo($"WebSocket message received: {e.Data}");
@@ -74,6 +117,7 @@ namespace McpUnity.Unity
                 var method = requestJson["method"]?.ToString();
                 var parameters = requestJson["params"] as JObject ?? new JObject();
                 var requestId = requestJson["id"]?.ToString();
+                var clientName = GetClientName();
                 // We need to dispatch to Unity's main thread and wait for completion
                 var tcs = new TaskCompletionSource<JObject>();
                 
@@ -83,10 +127,22 @@ namespace McpUnity.Unity
                 }
                 else if (_server.TryGetTool(method, out var tool))
                 {
+                    if (!TryAcquireWriteLease(tool.OperationKind, method, clientName, requestId))
+                    {
+                        return;
+                    }
+
+                    hasWriteLease = tool.OperationKind != McpOperationKind.Read;
                     EditorCoroutineUtility.StartCoroutineOwnerless(ExecuteTool(tool, parameters, tcs));
                 }
                 else if (_server.TryGetResource(method, out var resource))
                 {
+                    if (!TryAcquireWriteLease(resource.OperationKind, method, clientName, requestId))
+                    {
+                        return;
+                    }
+
+                    hasWriteLease = resource.OperationKind != McpOperationKind.Read;
                     EditorCoroutineUtility.StartCoroutineOwnerless(FetchResourceCoroutine(resource, parameters, tcs));
                 }
                 else
@@ -109,39 +165,21 @@ namespace McpUnity.Unity
                 
                 Send(CreateErrorResponse($"Internal server error: {ex.Message}", "internal_error").ToString(Formatting.None));
             }
+            finally
+            {
+                if (hasWriteLease)
+                {
+                    _server.ExecutionGate.ExitWrite(ID);
+                    McpLogger.LogInfo($"Released write execution lease for session {ID}");
+                }
+            }
         }
         
         /// <summary>
-        /// Handle WebSocket connection open.
-        /// Closes any stale connections first to prevent file descriptor accumulation.
-        /// websocket-sharp uses Mono's IOSelector/select(), which crashes when FD
-        /// values exceed ~1024. Limiting to one active connection keeps FD usage bounded.
-        /// See: https://github.com/CoderGamester/mcp-unity/issues/110
+        /// Handle WebSocket connection open and register the client for multi-session tracking.
         /// </summary>
         protected override void OnOpen()
         {
-            // Close any existing connections — MCP Unity is designed for one client at a time.
-            // This prevents file descriptor accumulation from reconnection cycles.
-            var staleIds = _server.Clients.Keys
-                .Where(id => id != ID)
-                .ToList();
-
-            if (staleIds.Count > 0)
-            {
-                foreach (var oldId in staleIds)
-                {
-                    try
-                    {
-                        Sessions.CloseSession(oldId, CloseStatusCode.Normal, "Replaced by new connection");
-                    }
-                    catch (Exception ex)
-                    {
-                        McpLogger.LogWarning($"Error closing stale session {oldId}: {ex.Message}");
-                    }
-                }
-                McpLogger.LogInfo($"Closed {staleIds.Count} stale connection(s) to accept new client");
-            }
-
             // Extract client name from the X-Client-Name header (if available)
             string clientName = "";
             NameValueCollection headers = Context.Headers;
@@ -164,7 +202,7 @@ namespace McpUnity.Unity
             _server.Clients.TryGetValue(ID, out string clientName);
             
             // Remove the client from the server
-            _server.Clients.Remove(ID);
+            _server.Clients.TryRemove(ID, out _);
             
             McpLogger.LogInfo($"WebSocket client '{clientName}' disconnected: {e.Reason}");
         }
@@ -232,6 +270,44 @@ namespace McpUnity.Unity
                 ));
             }
             yield return null;
+        }
+
+        private string GetClientName()
+        {
+            if (_server.Clients.TryGetValue(ID, out var clientName) && !string.IsNullOrEmpty(clientName))
+            {
+                return clientName;
+            }
+
+            NameValueCollection headers = Context?.Headers;
+            if (headers != null && headers.Contains("X-Client-Name"))
+            {
+                return headers["X-Client-Name"];
+            }
+
+            return string.Empty;
+        }
+
+        private bool TryAcquireWriteLease(McpOperationKind operationKind, string method, string clientName, string requestId)
+        {
+            if (operationKind == McpOperationKind.Read)
+            {
+                return true;
+            }
+
+            if (_server.ExecutionGate.TryEnterWrite(ID, clientName, method))
+            {
+                McpLogger.LogInfo($"Granted write execution lease for method '{method}' to session {ID}");
+                return true;
+            }
+
+            var busyResponse = CreateResponse(
+                requestId,
+                CreateBusyResponse(_server.ExecutionGate.ActiveOperation, _server.ExecutionGate.ActiveClientName));
+            McpLogger.LogWarning(
+                $"Rejected write request '{method}' for session {ID} because '{_server.ExecutionGate.ActiveOperation}' is already running.");
+            Send(busyResponse.ToString(Formatting.None));
+            return false;
         }
         
         /// <summary>

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using UnityEditor;
@@ -89,7 +90,12 @@ namespace McpUnity.Unity
         /// <summary>
         /// Dictionary of connected clients with this server
         /// </summary>
-        public Dictionary<string, string> Clients { get; } = new Dictionary<string, string>();
+        public ConcurrentDictionary<string, string> Clients { get; } = new ConcurrentDictionary<string, string>();
+
+        /// <summary>
+        /// Shared phase 1 writer-admission gate for all connected clients.
+        /// </summary>
+        public McpUnityExecutionGate ExecutionGate { get; } = new McpUnityExecutionGate();
 
         /// <summary>
         /// Private constructor to enforce singleton pattern

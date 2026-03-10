@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using Newtonsoft.Json.Linq;
 using McpUnity.Unity;
 
 namespace McpUnity.Tests
@@ -52,6 +53,18 @@ namespace McpUnity.Tests
 
             Assert.IsNull(gate.ActiveClientName);
             Assert.IsNull(gate.ActiveOperation);
+        }
+
+        [Test]
+        public void CreateBusyResponse_UsesBusyErrorType()
+        {
+            JObject response = McpUnitySocketHandler.CreateBusyResponse("update_gameobject", "Client A");
+
+            Assert.AreEqual("busy_error", response["error"]?["type"]?.ToString());
+            Assert.That(response["error"]?["message"]?.ToString(), Does.Contain("update_gameobject"));
+            Assert.IsTrue(response["error"]?["details"]?["retryable"]?.ToObject<bool>() ?? false);
+            Assert.AreEqual("update_gameobject", response["error"]?["details"]?["activeOperation"]?.ToString());
+            Assert.AreEqual("Client A", response["error"]?["details"]?["activeClientName"]?.ToString());
         }
     }
 }
