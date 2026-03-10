@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 using Newtonsoft.Json.Linq;
+using McpUnity.Unity;
 
 namespace McpUnity.Tools
 {
@@ -27,6 +28,11 @@ namespace McpUnity.Tools
         /// If false, Execute should be overridden.
         /// </summary>
         public bool IsAsync { get; protected set; } = false;
+
+        /// <summary>
+        /// Declares whether this tool reads state or needs single-writer admission.
+        /// </summary>
+        public McpOperationKind OperationKind { get; protected set; } = McpOperationKind.Write;
         
         /// <summary>
         /// Execute the tool asynchronously with the provided parameters.

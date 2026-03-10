@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 using Newtonsoft.Json.Linq;
+using McpUnity.Unity;
 
 namespace McpUnity.Resources
 {
@@ -35,6 +36,11 @@ namespace McpUnity.Resources
         /// Indicates if the fetch operation is asynchronous.
         /// </summary>
         public bool IsAsync { get; protected set; } = false;
+
+        /// <summary>
+        /// Declares whether this resource only reads state or requires single-writer admission.
+        /// </summary>
+        public McpOperationKind OperationKind { get; protected set; } = McpOperationKind.Read;
 
         /// <summary>
         /// Synchronously fetch the resource data.
