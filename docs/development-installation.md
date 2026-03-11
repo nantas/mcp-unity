@@ -45,7 +45,7 @@ Recommended validation flow:
 1. Open the host Unity project after linking the package.
 2. Confirm Unity recompiles the package without errors.
 3. Start the MCP Unity server from the Unity Editor window.
-4. Run MCP requests from one or more client sessions against the host project.
+4. Run MCP requests from an interactive `codex` session opened directly in the host project repository.
 5. Verify behavior in the real Unity project, not only in this source repository.
 
 ### Release mode: copy a package snapshot into the Unity project
@@ -107,3 +107,21 @@ That keeps both the development symlink and the copied release snapshot local to
 ## Current validation limitation
 
 This repository is a Unity package repository, not a standalone Unity project. That means some Unity Editor integration tests still need to be validated inside a real host Unity project after linking or installing the package.
+
+## Validation runtime policy
+
+For host-project validation, the supported runtime path is:
+
+```text
+cd <UnityProject>
+codex
+```
+
+Use that interactive `codex` session as the authoritative validation path.
+
+`codex exec` can still be used for compatibility checks or automation experiments, but it is currently treated as a non-blocking path. If `codex exec` and interactive `codex` disagree, release-gating decisions should follow the interactive `codex` result until the compatibility gap is investigated separately.
+
+Validation notes should always record which client path was used:
+
+- `interactive codex`
+- `codex exec`

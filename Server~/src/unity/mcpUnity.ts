@@ -3,11 +3,12 @@ import { Logger } from '../utils/logger.js';
 import { McpUnityError, ErrorType } from '../utils/errors.js';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { UnityConnection, ConnectionState, ConnectionStateChange, UnityConnectionConfig } from './unityConnection.js';
 import { CommandQueue, CommandQueueConfig, CommandQueueStats, QueuedCommand } from './commandQueue.js';
 
-// Top-level constant for the Unity settings JSON path
-const MCP_UNITY_SETTINGS_PATH = path.resolve(process.cwd(), './ProjectSettings/McpUnitySettings.json');
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
+const MCP_UNITY_SETTINGS_RELATIVE_PATH = path.join('ProjectSettings', 'McpUnitySettings.json');
 
 interface PendingRequest {
   resolve: (value: any) => void;
@@ -56,6 +57,42 @@ export type ConnectionStateCallback = (change: ConnectionStateChange) => void;
 // Re-export connection types for consumers
 export { ConnectionState, type ConnectionStateChange } from './unityConnection.js';
 export { type CommandQueueConfig, type CommandQueueStats } from './commandQueue.js';
+
+async function findNearestSettingsPath(startDir: string): Promise<string | null> {
+  let currentDir = path.resolve(startDir);
+
+  while (true) {
+    const candidate = path.join(currentDir, MCP_UNITY_SETTINGS_RELATIVE_PATH);
+
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      // Keep walking upward until we either find the host ProjectSettings or reach the filesystem root.
+    }
+
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      return null;
+    }
+
+    currentDir = parentDir;
+  }
+}
+
+export async function resolveMcpUnitySettingsPath(
+  cwd: string = process.cwd(),
+  moduleDir: string = MODULE_DIR
+): Promise<string> {
+  for (const startDir of [cwd, moduleDir]) {
+    const resolved = await findNearestSettingsPath(startDir);
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return path.resolve(cwd, MCP_UNITY_SETTINGS_RELATIVE_PATH);
+}
 
 /**
  * Options for sending a request
@@ -533,7 +570,7 @@ export class McpUnity {
    * @returns a JSON object with the contents of the McpUnitySettings.json file.
    */
   private async readConfigFileAsJson(): Promise<any> {
-    const configPath = MCP_UNITY_SETTINGS_PATH;
+    const configPath = await resolveMcpUnitySettingsPath();
     try {
       const content = await fs.readFile(configPath, 'utf-8');
       const json = JSON.parse(content);

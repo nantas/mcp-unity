@@ -3,9 +3,11 @@ import { Logger, LogLevel } from '../utils/logger.js';
 import { McpUnityError, ErrorType } from '../utils/errors.js';
 import { registerTransformTools } from '../tools/transformTools.js';
 import path from 'path';
+import os from 'os';
+import { promises as fs } from 'fs';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { mapUnityResponseError } from '../unity/mcpUnity.js';
+import { mapUnityResponseError, resolveMcpUnitySettingsPath } from '../unity/mcpUnity.js';
 
 describe('McpUnityError integration', () => {
   it('should create proper error for connection issues', () => {
@@ -87,6 +89,29 @@ describe('Path handling in configuration', () => {
     const resolved = path.resolve(cwd, relativePath);
 
     expect(resolved).toContain('Test User');
+  });
+
+  it('finds host ProjectSettings from an installed package module path when cwd is elsewhere', async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'mcp-unity-config-'));
+    const hostRoot = path.join(tempRoot, 'Host Project');
+    const moduleDir = path.join(
+      hostRoot,
+      'Packages',
+      'com.gamelovers.mcp-unity',
+      'Server~',
+      'build'
+    );
+    const settingsPath = path.join(hostRoot, 'ProjectSettings', 'McpUnitySettings.json');
+
+    await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+    await fs.mkdir(moduleDir, { recursive: true });
+    await fs.writeFile(settingsPath, JSON.stringify({ RequestTimeoutSeconds: 60 }), 'utf8');
+
+    const resolved = await resolveMcpUnitySettingsPath('/tmp/not-the-host-project', moduleDir);
+
+    expect(resolved).toBe(settingsPath);
+
+    await fs.rm(tempRoot, { recursive: true, force: true });
   });
 });
 

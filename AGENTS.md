@@ -39,6 +39,7 @@
 - **Unity side**
   - Open the Unity project that has this package installed.
   - For active development, prefer linking this repo into the host Unity project at `Packages/com.gamelovers.mcp-unity` instead of using a Package Manager git dependency.
+  - For agent-driven snapshot installation into another Unity repo without Package Manager, follow `INSTALL-GUIDE.md`.
   - Ensure the server is running (auto-start is controlled by `McpUnitySettings.AutoStartServer`).
   - Settings persist in `ProjectSettings/McpUnitySettings.json`.
 

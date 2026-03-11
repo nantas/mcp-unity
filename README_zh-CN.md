@@ -59,6 +59,8 @@ MCP Unity 是 Model Context Protocol 在 Unity 编辑器中的实现，允许 AI
 
 完整流程与辅助脚本见 [docs/development-installation.md](docs/development-installation.md)。
 
+如果要让 agent 在另一个 Unity 仓库中按“克隆到临时目录 -> 复制到 `Packages/` -> 配置本地 MCP 客户端”的方式完成完整安装，请使用 [INSTALL-GUIDE.md](INSTALL-GUIDE.md)。
+
 ## 功能
 
 ### IDE 集成 - 包缓存访问

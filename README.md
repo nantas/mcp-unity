@@ -59,6 +59,8 @@ This fork now recommends local embedded-package workflows instead of relying on 
 
 See [docs/development-installation.md](docs/development-installation.md) for the full workflow and the helper scripts.
 
+For agent-driven no-Package-Manager installation into another Unity repo, use [INSTALL-GUIDE.md](INSTALL-GUIDE.md).
+
 ## Features
 
 ### IDE Integration - Package Cache Access
