@@ -317,6 +317,9 @@ By default, the WebSocket server runs on port '8090'. You can change this port i
 5. Restart the Node.js server
 6. Click again on "Start Server" to reconnect the Unity Editor web socket to the Node.js MCP Server
 
+> [!TIP]
+> Using different ports per Unity project helps route different MCP agents to different editors.
+
 ## Optional: Set Timeout
 
 By default, the timeout between the MCP server and the WebSocket is 10 seconds.
@@ -342,6 +345,25 @@ By default, the WebSocket server binds to 'localhost'. To allow MCP bridge conne
 4. Unity will bind the WebSocket server to '0.0.0.0' (all interfaces)
 5. Restart the Node.js server to apply the new host configuration
 6. Set the environment variable UNITY_HOST to your Unity machine's IP address when running the MCP bridge remotely: `UNITY_HOST=192.168.1.100 node server.js`
+
+## Project Path Validation (Strict)
+
+MCP Unity now validates project affinity for **all** tools/resources:
+
+- On connect/reconnect, Node sends a `mcp_unity_handshake` request.
+- Node compares the MCP workspace root with the Unity project's root path.
+- If they do not match, all non-handshake requests fail with `project_mismatch_error`.
+
+Workspace root resolution order:
+
+1. `MCP_UNITY_WORKSPACE_ROOT` (if set)
+2. Node process current working directory (`cwd`)
+
+If your MCP client starts the Node process from a wrapper directory, set:
+
+```bash
+export MCP_UNITY_WORKSPACE_ROOT=/absolute/path/to/your/unity/project
+```
 
 ## <a name="debug-server"></a>Debugging the Server
 

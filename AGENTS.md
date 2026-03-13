@@ -13,10 +13,11 @@
 ### Key defaults & invariants
 - **Unity WebSocket endpoint**: `ws://localhost:8090/McpUnity` by default.
 - **Config file**: `ProjectSettings/McpUnitySettings.json` (written/read by Unity; read opportunistically by Node).
+- **Project affinity handshake**: Node sends `mcp_unity_handshake` after connect/reconnect. All non-handshake tools/resources are blocked until workspace path matches Unity project path.
 - **Execution thread**: Tool/resource execution is dispatched via `EditorCoroutineUtility` and runs on the **Unity main thread**. Keep synchronous work short; use async patterns for long work.
 - **Connection policy**: multiple WebSocket clients may coexist; Unity no longer kicks the previous client when a new one connects.
 - **Execution policy**: phase 1 uses single-writer admission only. `Read` operations pass through; conflicting `Write` / `CompositeWrite` operations return `busy_error`.
-- **Error boundary**: `busy_error` is a normal request response and must not trigger Node reconnect logic.
+- **Error boundary**: `busy_error` and `project_mismatch_error` are normal request responses and must not trigger Node reconnect logic.
 
 ### Repo layout (where to change what)
 ```
@@ -65,6 +66,10 @@ Node reads config from `../ProjectSettings/McpUnitySettings.json` relative to **
 - **port**: `8090`
 - **timeout**: `10s`
 
+Node workspace root used for project-affinity validation is resolved in this order:
+- `MCP_UNITY_WORKSPACE_ROOT` (if set)
+- Node process `cwd`
+
 **Remote connection note**:
 - If Unity is on another machine, set `AllowRemoteConnections=true` in Unity and set `UNITY_HOST=<unity_machine_ip_or_hostname>` for the Node process.
 
@@ -111,6 +116,7 @@ Node reads config from `../ProjectSettings/McpUnitySettings.json` relative to **
 
 ### Common pitfalls
 - **Port mismatch**: Unity default is **8090**; update docs/config if you change it.
+- **Project mismatch**: if Node workspace path does not match Unity project path, all non-handshake requests fail with `project_mismatch_error`.
 - **Name mismatch**: Node `toolName`/`resourceName` must equal Unity `Name` exactly, or Unity responds `unknown_method`.
 - **Long main-thread work**: synchronous `Execute()` blocks the Unity editor; use async patterns for heavy operations.
 - **Writer conflicts**: phase 1 does not queue conflicting writes. MCP callers must handle `busy_error` as a retryable business response.

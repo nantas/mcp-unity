@@ -66,5 +66,67 @@ namespace McpUnity.Tests
             Assert.AreEqual("update_gameobject", response["error"]?["details"]?["activeOperation"]?.ToString());
             Assert.AreEqual("Client A", response["error"]?["details"]?["activeClientName"]?.ToString());
         }
+
+        [Test]
+        public void CreateProjectHandshakeResponse_ReturnsSuccessWhenPathsMatch()
+        {
+            JObject response = McpUnitySocketHandler.CreateProjectHandshakeResponse(
+                "/Volumes/Shuttle/unity-projects/mcp-unity",
+                "/Volumes/Shuttle/unity-projects/mcp-unity/");
+
+            Assert.IsNull(response["error"]);
+            Assert.IsTrue(response["success"]?.ToObject<bool>() ?? false);
+            Assert.IsTrue(response["matched"]?.ToObject<bool>() ?? false);
+            Assert.AreEqual(
+                "/Volumes/Shuttle/unity-projects/mcp-unity",
+                response["unityProjectPath"]?.ToString());
+        }
+
+        [Test]
+        public void CreateProjectHandshakeResponse_ReturnsProjectMismatchErrorWhenPathsDiffer()
+        {
+            JObject response = McpUnitySocketHandler.CreateProjectHandshakeResponse(
+                "/Volumes/Shuttle/unity-projects/project-a",
+                "/Volumes/Shuttle/unity-projects/project-b");
+
+            Assert.AreEqual("project_mismatch_error", response["error"]?["type"]?.ToString());
+            Assert.AreEqual(
+                "/Volumes/Shuttle/unity-projects/project-a",
+                response["error"]?["details"]?["expectedPath"]?.ToString());
+            Assert.AreEqual(
+                "/Volumes/Shuttle/unity-projects/project-b",
+                response["error"]?["details"]?["actualPath"]?.ToString());
+        }
+
+        [Test]
+        public void NormalizeProjectPath_NormalizesSeparatorsAndTrailingSlash()
+        {
+            string normalized = McpUnitySocketHandler.NormalizeProjectPath(
+                "\\Volumes\\Shuttle\\unity-projects\\mcp-unity\\");
+
+            Assert.AreEqual("/Volumes/Shuttle/unity-projects/mcp-unity", normalized);
+        }
+
+        [Test]
+        public void NormalizeProjectPath_PreservesWindowsDriveRoot()
+        {
+            string normalized = McpUnitySocketHandler.NormalizeProjectPath("C:\\");
+
+            Assert.AreEqual("C:/", normalized);
+        }
+
+        [Test]
+        public void PathsMatch_SupportsOptionalCaseInsensitiveComparison()
+        {
+            Assert.IsTrue(McpUnitySocketHandler.PathsMatch(
+                "/Volumes/Shuttle/UNITY-PROJECTS/mcp-unity",
+                "/Volumes/Shuttle/unity-projects/mcp-unity",
+                true));
+
+            Assert.IsFalse(McpUnitySocketHandler.PathsMatch(
+                "/Volumes/Shuttle/UNITY-PROJECTS/mcp-unity",
+                "/Volumes/Shuttle/unity-projects/mcp-unity",
+                false));
+        }
     }
 }

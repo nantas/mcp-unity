@@ -308,6 +308,9 @@ MCP Unity 通过将 Unity `Library/PackedCache` 文件夹添加到您的工作�
 5. 重启 Node.js 服务器
 6. 再次点击 "Start Server" 以重新连接 Unity 编辑器 WebSocket 到 Node.js MCP 服务器
 
+> [!TIP]
+> 为不同 Unity 项目使用不同端口，有助于让不同 MCP agent 分别连接到不同编辑器实例。
+
 ## 可选：设置超时
 
 默认情况下，MCP 服务器与 WebSocket 之间的超时时间为 10 秒。
@@ -334,6 +337,25 @@ MCP Unity 通过将 Unity `Library/PackedCache` 文件夹添加到您的工作�
 5. 重新启动 Node.js 服务器以应用新的主机配置  
 6. 在远程运行 MCP Bridge 时，将环境变量 UNITY_HOST 设置为 Unity 所在机器的 IP 地址：  
    `UNITY_HOST=192.168.1.100 node server.js`
+
+## 项目路径严格校验
+
+MCP Unity 现在会对**所有**工具/资源执行项目归属校验：
+
+- 在连接或重连后，Node 会先发送 `mcp_unity_handshake`。
+- Node 会比较 MCP 工作区根路径与 Unity 项目根路径。
+- 如果不一致，所有非握手请求都会返回 `project_mismatch_error`。
+
+工作区根路径解析顺序：
+
+1. `MCP_UNITY_WORKSPACE_ROOT`（若已设置）
+2. Node 进程当前工作目录（`cwd`）
+
+如果你的 MCP 客户端不是从项目根目录启动 Node，请设置：
+
+```bash
+export MCP_UNITY_WORKSPACE_ROOT=/absolute/path/to/your/unity/project
+```
 
 ## <a name="debug-server"></a>调试服务器
 

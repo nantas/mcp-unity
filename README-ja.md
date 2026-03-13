@@ -291,6 +291,9 @@ AIクライアントのMCP設定ファイル（例：Claude Desktopのclaude_des
 5. Node.js サーバーを再起動
 6. 再度 "Start Server" をクリックして、Unity Editor の WebSocket を Node.js MCP サーバーに再接続
 
+> [!TIP]
+> Unity プロジェクトごとに別ポートを使うと、複数の MCP agent を別々の Unity エディターに振り分けやすくなります。
+
 ## オプション: タイムアウト設定
 
 デフォルトでは、MCPサーバーとWebSocket間のタイムアウトは 10 秒です。
@@ -317,6 +320,25 @@ AIクライアントのMCP設定ファイル（例：Claude Desktopのclaude_des
 5. Node.js サーバーを再起動して新しいホスト設定を適用する  
 6. リモートで MCP ブリッジを実行する場合は、環境変数 UNITY_HOST を Unity 実行マシンの IP アドレスに設定して起動：  
    `UNITY_HOST=192.168.1.100 node server.js`
+
+## プロジェクトパス検証（厳格）
+
+MCP Unity は、**すべての**ツール/リソースに対してプロジェクト整合性を検証します。
+
+- 接続・再接続時に Node が `mcp_unity_handshake` を送信します。
+- Node は MCP ワークスペースのルートと Unity プロジェクトのルートを比較します。
+- 一致しない場合、ハンドシェイク以外のすべてのリクエストは `project_mismatch_error` で失敗します。
+
+ワークスペースルートの解決順序：
+
+1. `MCP_UNITY_WORKSPACE_ROOT`（設定されている場合）
+2. Node プロセスのカレントディレクトリ（`cwd`）
+
+MCP クライアントがプロジェクトルート以外から Node を起動する場合は、次を設定してください：
+
+```bash
+export MCP_UNITY_WORKSPACE_ROOT=/absolute/path/to/your/unity/project
+```
 
 ## <a name="debug-server"></a>サーバーのデバッグ
 

@@ -11,6 +11,7 @@ using McpUnity.Resources;
 using Unity.EditorCoroutines.Editor;
 using System.Collections;
 using System.Collections.Specialized;
+using System.IO;
 using McpUnity.Utils;
 
 namespace McpUnity.Unity
@@ -20,6 +21,7 @@ namespace McpUnity.Unity
     /// </summary>
     public class McpUnitySocketHandler : WebSocketBehavior
     {
+        public const string HandshakeMethodName = "mcp_unity_handshake";
         private readonly McpUnityServer _server;
         
         /// <summary>
@@ -36,15 +38,22 @@ namespace McpUnity.Unity
         /// <param name="message">Error message</param>
         /// <param name="errorType">Type of error</param>
         /// <returns>A JObject containing the error information</returns>
-        public static JObject CreateErrorResponse(string message, string errorType)
+        public static JObject CreateErrorResponse(string message, string errorType, JObject details = null)
         {
+            var errorObject = new JObject
+            {
+                ["type"] = errorType,
+                ["message"] = message
+            };
+
+            if (details != null)
+            {
+                errorObject["details"] = details;
+            }
+
             return new JObject
             {
-                ["error"] = new JObject
-                {
-                    ["type"] = errorType,
-                    ["message"] = message
-                }
+                ["error"] = errorObject
             };
         }
 
@@ -124,6 +133,10 @@ namespace McpUnity.Unity
                 if (string.IsNullOrEmpty(method))
                 {
                     tcs.SetResult(CreateErrorResponse("Missing method in request", "invalid_request"));
+                }
+                else if (method == HandshakeMethodName)
+                {
+                    tcs.SetResult(HandleProjectHandshake(parameters));
                 }
                 else if (_server.TryGetTool(method, out var tool))
                 {
@@ -308,6 +321,112 @@ namespace McpUnity.Unity
                 $"Rejected write request '{method}' for session {ID} because '{_server.ExecutionGate.ActiveOperation}' is already running.");
             Send(busyResponse.ToString(Formatting.None));
             return false;
+        }
+
+        private JObject HandleProjectHandshake(JObject parameters)
+        {
+            string expectedWorkspacePath = parameters?["expectedWorkspacePath"]?.ToObject<string>() ?? string.Empty;
+            string unityProjectPath = GetCurrentProjectPath();
+            return CreateProjectHandshakeResponse(expectedWorkspacePath, unityProjectPath);
+        }
+
+        public static JObject CreateProjectHandshakeResponse(string expectedWorkspacePath, string unityProjectPath)
+        {
+            string normalizedExpectedPath = NormalizeProjectPath(expectedWorkspacePath);
+            string normalizedUnityProjectPath = NormalizeProjectPath(unityProjectPath);
+
+            if (string.IsNullOrEmpty(normalizedExpectedPath))
+            {
+                return CreateErrorResponse(
+                    "Missing expectedWorkspacePath in handshake request",
+                    "invalid_request");
+            }
+
+            bool caseInsensitiveComparison = Application.platform == RuntimePlatform.WindowsEditor;
+            if (!PathsMatch(normalizedExpectedPath, normalizedUnityProjectPath, caseInsensitiveComparison))
+            {
+                return CreateErrorResponse(
+                    "Connected Unity project does not match the MCP workspace path",
+                    "project_mismatch_error",
+                    new JObject
+                    {
+                        ["expectedPath"] = normalizedExpectedPath,
+                        ["actualPath"] = normalizedUnityProjectPath
+                    });
+            }
+
+            return new JObject
+            {
+                ["success"] = true,
+                ["matched"] = true,
+                ["unityProjectPath"] = normalizedUnityProjectPath,
+                ["message"] = "Project affinity validated"
+            };
+        }
+
+        public static string GetCurrentProjectPath()
+        {
+            try
+            {
+                string dataPath = Application.dataPath;
+                return Directory.GetParent(dataPath)?.FullName ?? string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        public static string NormalizeProjectPath(string projectPath)
+        {
+            if (string.IsNullOrWhiteSpace(projectPath))
+            {
+                return string.Empty;
+            }
+
+            string fullPath;
+            try
+            {
+                fullPath = Path.GetFullPath(projectPath);
+            }
+            catch
+            {
+                fullPath = projectPath;
+            }
+
+            string normalized = fullPath.Replace('\\', '/');
+            while (normalized.Contains("//"))
+            {
+                normalized = normalized.Replace("//", "/");
+            }
+
+            bool isWindowsDriveRoot = normalized.Length == 3 &&
+                                      char.IsLetter(normalized[0]) &&
+                                      normalized[1] == ':' &&
+                                      normalized[2] == '/';
+
+            if (normalized != "/" && !isWindowsDriveRoot)
+            {
+                normalized = normalized.TrimEnd('/');
+            }
+
+            return normalized;
+        }
+
+        public static bool PathsMatch(string expectedPath, string actualPath, bool caseInsensitive = false)
+        {
+            string normalizedExpected = NormalizeProjectPath(expectedPath);
+            string normalizedActual = NormalizeProjectPath(actualPath);
+
+            if (string.IsNullOrEmpty(normalizedExpected) || string.IsNullOrEmpty(normalizedActual))
+            {
+                return false;
+            }
+
+            return string.Equals(
+                normalizedExpected,
+                normalizedActual,
+                caseInsensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
         }
         
         /// <summary>

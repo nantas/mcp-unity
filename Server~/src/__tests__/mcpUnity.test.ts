@@ -8,6 +8,8 @@ import { promises as fs } from 'fs';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { mapUnityResponseError, resolveMcpUnitySettingsPath } from '../unity/mcpUnity.js';
+import { normalizeWorkspacePath, pathsMatch, resolveExpectedWorkspaceRoot } from '../unity/mcpUnity.js';
+import { McpUnity, ConnectionState } from '../unity/mcpUnity.js';
 
 describe('McpUnityError integration', () => {
   it('should create proper error for connection issues', () => {
@@ -35,6 +37,24 @@ describe('McpUnityError integration', () => {
     expect(error.details).toEqual({
       retryable: true,
       activeOperation: 'update_gameobject'
+    });
+  });
+
+  it('maps project_mismatch_error responses to ErrorType.PROJECT_MISMATCH', () => {
+    const error = mapUnityResponseError({
+      type: 'project_mismatch_error',
+      message: 'Workspace does not match Unity project',
+      details: {
+        expectedPath: '/repo/a',
+        actualPath: '/repo/b'
+      }
+    });
+
+    expect(error.type).toBe(ErrorType.PROJECT_MISMATCH);
+    expect(error.message).toBe('Workspace does not match Unity project');
+    expect(error.details).toEqual({
+      expectedPath: '/repo/a',
+      actualPath: '/repo/b'
     });
   });
 });
@@ -113,6 +133,36 @@ describe('Path handling in configuration', () => {
 
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
+
+  it('uses MCP_UNITY_WORKSPACE_ROOT when present', () => {
+    const resolved = resolveExpectedWorkspaceRoot(
+      { MCP_UNITY_WORKSPACE_ROOT: '/tmp/agent-workspace' } as NodeJS.ProcessEnv,
+      '/tmp/fallback-cwd'
+    );
+
+    expect(resolved).toBe('/tmp/agent-workspace');
+  });
+
+  it('falls back to cwd when MCP_UNITY_WORKSPACE_ROOT is missing', () => {
+    const resolved = resolveExpectedWorkspaceRoot(
+      {} as NodeJS.ProcessEnv,
+      '/tmp/fallback-cwd'
+    );
+
+    expect(resolved).toBe('/tmp/fallback-cwd');
+  });
+
+  it('normalizes path separators and trailing slashes', () => {
+    expect(normalizeWorkspacePath('/Users/test/workspace/')).toBe('/Users/test/workspace');
+    expect(normalizeWorkspacePath('/Users/test//workspace//')).toBe('/Users/test/workspace');
+    expect(normalizeWorkspacePath('\\Users\\test\\workspace\\')).toBe('/Users/test/workspace');
+  });
+
+  it('matches equivalent paths after normalization', () => {
+    expect(pathsMatch('/Users/test/workspace/', '/Users/test/workspace')).toBe(true);
+    expect(pathsMatch('/Users/test//workspace', '\\Users\\test\\workspace\\')).toBe(true);
+    expect(pathsMatch('/Users/test/workspace', '/Users/test/another')).toBe(false);
+  });
 });
 
 describe('Logger with path-related messages', () => {
@@ -186,5 +236,71 @@ describe('Transform schema compatibility', () => {
 
       expect(refs).toEqual([]);
     }
+  });
+});
+
+describe('Project affinity handshake gate', () => {
+  const logger = new Logger('Test', LogLevel.ERROR);
+
+  function createConnectedMcpUnity(): any {
+    const unity = new McpUnity(logger) as any;
+    unity.connection = {
+      isConnected: true,
+      connectionState: ConnectionState.Connected,
+      connect: jest.fn().mockResolvedValue(undefined)
+    };
+    unity.sendRequestInternal = jest.fn().mockResolvedValue({ success: true });
+    return unity;
+  }
+
+  it('validates project affinity before sending non-handshake requests', async () => {
+    const unity = createConnectedMcpUnity();
+    unity.handshakeValidated = false;
+    unity.validateProjectAffinity = jest.fn().mockResolvedValue(undefined);
+
+    await unity.sendRequest({ method: 'run_tests', params: {} });
+
+    expect(unity.validateProjectAffinity).toHaveBeenCalledTimes(1);
+    expect(unity.sendRequestInternal).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows handshake requests without prior validation', async () => {
+    const unity = createConnectedMcpUnity();
+    unity.handshakeValidated = false;
+    unity.validateProjectAffinity = jest.fn().mockResolvedValue(undefined);
+
+    await unity.sendRequest({ method: 'mcp_unity_handshake', params: {} });
+
+    expect(unity.validateProjectAffinity).not.toHaveBeenCalled();
+    expect(unity.sendRequestInternal).toHaveBeenCalledTimes(1);
+  });
+
+  it('blocks non-handshake requests when validation fails', async () => {
+    const unity = createConnectedMcpUnity();
+    unity.handshakeValidated = false;
+    unity.validateProjectAffinity = jest
+      .fn()
+      .mockRejectedValue(new McpUnityError(ErrorType.PROJECT_MISMATCH, 'Mismatch'));
+
+    await expect(unity.sendRequest({ method: 'run_tests', params: {} })).rejects.toMatchObject({
+      type: ErrorType.PROJECT_MISMATCH
+    });
+    expect(unity.sendRequestInternal).not.toHaveBeenCalled();
+  });
+
+  it('revalidates on reconnect before replaying queued commands', async () => {
+    const unity = createConnectedMcpUnity();
+    unity.validateProjectAffinity = jest.fn().mockResolvedValue(undefined);
+    unity.replayQueuedCommands = jest.fn().mockResolvedValue(undefined);
+
+    unity.handleStateChange({
+      previousState: ConnectionState.Reconnecting,
+      currentState: ConnectionState.Connected
+    });
+
+    await new Promise(resolve => setImmediate(resolve));
+
+    expect(unity.validateProjectAffinity).toHaveBeenCalledTimes(1);
+    expect(unity.replayQueuedCommands).toHaveBeenCalledTimes(1);
   });
 });

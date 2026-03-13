@@ -112,6 +112,7 @@ describe('handleError', () => {
 describe('ErrorType', () => {
   it('should have all expected error types', () => {
     expect(ErrorType.BUSY).toBe('busy_error');
+    expect(ErrorType.PROJECT_MISMATCH).toBe('project_mismatch_error');
     expect(ErrorType.CONNECTION).toBe('connection_error');
     expect(ErrorType.TOOL_EXECUTION).toBe('tool_execution_error');
     expect(ErrorType.RESOURCE_FETCH).toBe('resource_fetch_error');
