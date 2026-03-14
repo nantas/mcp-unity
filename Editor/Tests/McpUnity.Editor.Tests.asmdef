@@ -13,9 +13,9 @@
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
-        "websocket-sharp.dll",
         "nunit.framework.dll",
-        "Newtonsoft.Json.dll"
+        "Newtonsoft.Json.dll",
+        "websocket-sharp.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [

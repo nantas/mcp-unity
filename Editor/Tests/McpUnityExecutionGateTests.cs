@@ -58,7 +58,7 @@ namespace McpUnity.Tests
         [Test]
         public void CreateBusyResponse_UsesBusyErrorType()
         {
-            JObject response = McpUnitySocketHandler.CreateBusyResponse("update_gameobject", "Client A");
+            JObject response = McpUnityResponseUtils.CreateBusyResponse("update_gameobject", "Client A");
 
             Assert.AreEqual("busy_error", response["error"]?["type"]?.ToString());
             Assert.That(response["error"]?["message"]?.ToString(), Does.Contain("update_gameobject"));
@@ -70,7 +70,7 @@ namespace McpUnity.Tests
         [Test]
         public void CreateProjectHandshakeResponse_ReturnsSuccessWhenPathsMatch()
         {
-            JObject response = McpUnitySocketHandler.CreateProjectHandshakeResponse(
+            JObject response = McpUnityResponseUtils.CreateProjectHandshakeResponse(
                 "/Volumes/Shuttle/unity-projects/mcp-unity",
                 "/Volumes/Shuttle/unity-projects/mcp-unity/");
 
@@ -85,7 +85,7 @@ namespace McpUnity.Tests
         [Test]
         public void CreateProjectHandshakeResponse_ReturnsProjectMismatchErrorWhenPathsDiffer()
         {
-            JObject response = McpUnitySocketHandler.CreateProjectHandshakeResponse(
+            JObject response = McpUnityResponseUtils.CreateProjectHandshakeResponse(
                 "/Volumes/Shuttle/unity-projects/project-a",
                 "/Volumes/Shuttle/unity-projects/project-b");
 
@@ -101,7 +101,7 @@ namespace McpUnity.Tests
         [Test]
         public void NormalizeProjectPath_NormalizesSeparatorsAndTrailingSlash()
         {
-            string normalized = McpUnitySocketHandler.NormalizeProjectPath(
+            string normalized = McpUnityResponseUtils.NormalizeProjectPath(
                 "\\Volumes\\Shuttle\\unity-projects\\mcp-unity\\");
 
             Assert.AreEqual("/Volumes/Shuttle/unity-projects/mcp-unity", normalized);
@@ -110,7 +110,7 @@ namespace McpUnity.Tests
         [Test]
         public void NormalizeProjectPath_PreservesWindowsDriveRoot()
         {
-            string normalized = McpUnitySocketHandler.NormalizeProjectPath("C:\\");
+            string normalized = McpUnityResponseUtils.NormalizeProjectPath("C:\\");
 
             Assert.AreEqual("C:/", normalized);
         }
@@ -118,12 +118,12 @@ namespace McpUnity.Tests
         [Test]
         public void PathsMatch_SupportsOptionalCaseInsensitiveComparison()
         {
-            Assert.IsTrue(McpUnitySocketHandler.PathsMatch(
+            Assert.IsTrue(McpUnityResponseUtils.PathsMatch(
                 "/Volumes/Shuttle/UNITY-PROJECTS/mcp-unity",
                 "/Volumes/Shuttle/unity-projects/mcp-unity",
                 true));
 
-            Assert.IsFalse(McpUnitySocketHandler.PathsMatch(
+            Assert.IsFalse(McpUnityResponseUtils.PathsMatch(
                 "/Volumes/Shuttle/UNITY-PROJECTS/mcp-unity",
                 "/Volumes/Shuttle/unity-projects/mcp-unity",
                 false));
