@@ -176,6 +176,16 @@ describe('UnityConnection', () => {
       expect((connection as any).isLifecycleReconnect).toBe(true);
       expect(connection.connectionState).toBe(ConnectionState.Reconnecting);
     });
+
+    it('rejects connect() when first socket closes before open', async () => {
+      const pending = connection.connect();
+      const wsCtor = (await import('ws')).default as unknown as jest.Mock;
+      const socket = wsCtor.mock.results[wsCtor.mock.results.length - 1].value;
+
+      socket.onclose({ code: 1006, reason: 'Connection refused' });
+
+      await expect(pending).rejects.toMatchObject({ type: ErrorType.CONNECTION });
+    });
   });
 });
 

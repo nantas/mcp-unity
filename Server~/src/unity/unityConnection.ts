@@ -203,6 +203,7 @@ export class UnityConnection extends EventEmitter {
    */
   private async doConnect(): Promise<void> {
     const isReconnecting = this.reconnectAttempt > 0;
+    const isInitialConnectAttempt = !isReconnecting;
     this.setState(
       isReconnecting ? ConnectionState.Reconnecting : ConnectionState.Connecting,
       isReconnecting ? `Reconnection attempt ${this.reconnectAttempt}` : 'Connecting'
@@ -297,8 +298,8 @@ export class UnityConnection extends EventEmitter {
           this.setState(ConnectionState.Disconnected, reason);
         }
 
-        // Reject if we were in initial connection
-        if (this.state === ConnectionState.Connecting) {
+        // Ensure initial connect callers don't hang when socket closes before open.
+        if (isInitialConnectAttempt) {
           reject(new McpUnityError(ErrorType.CONNECTION, reason));
         }
       };
