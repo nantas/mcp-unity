@@ -341,3 +341,45 @@ describe('Timeout policy defaults', () => {
     expect(unity.connectTimeout).toBe(10000);
   });
 });
+
+describe('Request timeout reconnect policy', () => {
+  const logger = new Logger('Test', LogLevel.ERROR);
+
+  it('does not call forceReconnect on request timeout when state is reconnecting', async () => {
+    jest.useFakeTimers();
+    const unity = new McpUnity(logger) as any;
+    unity.connection = {
+      isConnected: true,
+      connectionState: ConnectionState.Reconnecting,
+      connect: jest.fn().mockResolvedValue(undefined),
+      send: jest.fn(),
+      forceReconnect: jest.fn()
+    };
+
+    const pending = unity.sendRequestInternal({ id: 'timeout-reconnect-1', method: 'x', params: {} }, 10);
+    jest.advanceTimersByTime(11);
+
+    await expect(pending).rejects.toMatchObject({ type: ErrorType.TIMEOUT });
+    expect(unity.connection.forceReconnect).not.toHaveBeenCalled();
+    jest.useRealTimers();
+  });
+
+  it('calls forceReconnect on request timeout only when still connected', async () => {
+    jest.useFakeTimers();
+    const unity = new McpUnity(logger) as any;
+    unity.connection = {
+      isConnected: true,
+      connectionState: ConnectionState.Connected,
+      connect: jest.fn().mockResolvedValue(undefined),
+      send: jest.fn(),
+      forceReconnect: jest.fn()
+    };
+
+    const pending = unity.sendRequestInternal({ id: 'timeout-reconnect-2', method: 'y', params: {} }, 10);
+    jest.advanceTimersByTime(11);
+
+    await expect(pending).rejects.toMatchObject({ type: ErrorType.TIMEOUT });
+    expect(unity.connection.forceReconnect).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
+  });
+});

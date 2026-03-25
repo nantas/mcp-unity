@@ -653,8 +653,8 @@ export class McpUnity {
           this.pendingRequests.delete(requestId);
           reject(new McpUnityError(ErrorType.TIMEOUT, 'Request timed out'));
 
-          // Force reconnection on timeout (connection may be stale)
-          if (this.connection) {
+          // Force reconnection on timeout only when current socket still appears connected.
+          if (this.connection && this.connectionState === ConnectionState.Connected) {
             this.connection.forceReconnect();
           }
         }
