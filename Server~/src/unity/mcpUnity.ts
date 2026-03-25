@@ -259,9 +259,7 @@ export class McpUnity {
       });
 
       this.connection.on('error', (error: McpUnityError) => {
-        this.logger.error(`Connection error: ${error.message}`);
-        // Reject pending requests on connection error
-        this.rejectAllPendingRequests(error);
+        this.handleConnectionError(error);
       });
 
       this.logger.info('Attempting to connect to Unity WebSocket...');
@@ -397,6 +395,12 @@ export class McpUnity {
     for (const command of queuedCommands) {
       command.reject(error);
     }
+  }
+
+  private handleConnectionError(error: McpUnityError): void {
+    this.logger.error(`Connection error: ${error.message}`);
+    // Keep pending requests alive on transient socket errors.
+    // Terminal failure is decided by request timeout or disconnected terminal state.
   }
 
   /**

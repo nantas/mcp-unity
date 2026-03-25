@@ -304,3 +304,16 @@ describe('Project affinity handshake gate', () => {
     expect(unity.replayQueuedCommands).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('Connection error handling policy', () => {
+  const logger = new Logger('Test', LogLevel.ERROR);
+
+  it('does not reject all pending requests on transient connection error event', () => {
+    const unity = new McpUnity(logger) as any;
+    unity.rejectAllPendingRequests = jest.fn();
+
+    unity.handleConnectionError(new McpUnityError(ErrorType.CONNECTION, 'transient socket error'));
+
+    expect(unity.rejectAllPendingRequests).not.toHaveBeenCalled();
+  });
+});
