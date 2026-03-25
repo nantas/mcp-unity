@@ -88,7 +88,9 @@ namespace McpUnity.Unity
         public bool IsListening => _webSocketServer?.IsListening ?? false;
 
         /// <summary>
-        /// Dictionary of connected clients with this server
+        /// Thread-safe dictionary of connected clients with this server.
+        /// WebSocketSharp dispatches OnOpen/OnClose on thread pool threads,
+        /// so concurrent access must be safe.
         /// </summary>
         public ConcurrentDictionary<string, string> Clients { get; } = new ConcurrentDictionary<string, string>();
 
@@ -173,7 +175,6 @@ namespace McpUnity.Unity
             {
                 var host = McpUnitySettings.Instance.AllowRemoteConnections ? "0.0.0.0" : "localhost";
                 _webSocketServer = new WebSocketServer($"ws://{host}:{McpUnitySettings.Instance.Port}");
-                _webSocketServer.ReuseAddress = true;
                 _webSocketServer.AddWebSocketService("/McpUnity", () => new McpUnitySocketHandler(this));
                 _webSocketServer.Start();
                 McpLogger.LogInfo($"WebSocket server started successfully on {host}:{McpUnitySettings.Instance.Port}.");
