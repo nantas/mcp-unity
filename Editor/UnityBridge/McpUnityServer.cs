@@ -25,6 +25,11 @@ namespace McpUnity.Unity
         /// Unity is entering Play mode - clients should use fast polling instead of backoff
         /// </summary>
         public const ushort PlayMode = 4001;
+
+        /// <summary>
+        /// Unity is reloading assemblies - clients should treat as expected lifecycle reconnect.
+        /// </summary>
+        public const ushort AssemblyReload = 4002;
     }
 
     /// <summary>
@@ -490,7 +495,7 @@ namespace McpUnity.Unity
             
             if (_instance.IsListening)
             {
-                _instance.StopServer();
+                _instance.StopServer(UnityCloseCode.AssemblyReload, "Unity assembly reload");
             }
         }
 
