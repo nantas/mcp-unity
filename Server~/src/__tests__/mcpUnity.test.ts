@@ -317,3 +317,27 @@ describe('Connection error handling policy', () => {
     expect(unity.rejectAllPendingRequests).not.toHaveBeenCalled();
   });
 });
+
+describe('Timeout policy defaults', () => {
+  const logger = new Logger('Test', LogLevel.ERROR);
+
+  it('uses requestTimeout=60000ms and connectTimeout=10000ms when config is absent', async () => {
+    const unity = new McpUnity(logger) as any;
+    unity.readConfigFileAsJson = jest.fn().mockResolvedValue({});
+
+    await unity.parseAndSetConfig();
+
+    expect(unity.requestTimeout).toBe(60000);
+    expect(unity.connectTimeout).toBe(10000);
+  });
+
+  it('maps RequestTimeoutSeconds from settings to requestTimeout only', async () => {
+    const unity = new McpUnity(logger) as any;
+    unity.readConfigFileAsJson = jest.fn().mockResolvedValue({ RequestTimeoutSeconds: 90 });
+
+    await unity.parseAndSetConfig();
+
+    expect(unity.requestTimeout).toBe(90000);
+    expect(unity.connectTimeout).toBe(10000);
+  });
+});

@@ -41,6 +41,7 @@ export interface UnityConnectionConfig {
   host: string;
   port: number;
   requestTimeout: number;
+  connectTimeout?: number;
   clientName?: string;
 
   // Reconnection settings
@@ -61,6 +62,7 @@ export interface UnityConnectionConfig {
  * Default configuration values
  */
 const DEFAULT_CONFIG = {
+  connectTimeout: 10000,
   minReconnectDelay: 1000,
   maxReconnectDelay: 30000,
   reconnectBackoffMultiplier: 2,
@@ -237,7 +239,7 @@ export class UnityConnection extends EventEmitter {
           this.handleConnectionFailure(error);
           reject(error);
         }
-      }, this.config.requestTimeout);
+      }, this.config.connectTimeout);
 
       this.ws.onopen = () => {
         clearTimeout(connectionTimeout);
