@@ -7,6 +7,7 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 // Constants for the tool
 const toolName = 'run_tests';
+const LONG_RUNNING_TIMEOUT_MS = 120000;
 const toolDescription = 'Runs Unity\'s Test Runner tests';
 const paramsSchema = z.object({
   testMode: z.string().optional().default('EditMode').describe('The test mode to run (EditMode or PlayMode) - defaults to EditMode (optional)'),
@@ -70,7 +71,7 @@ async function toolHandler(mcpUnity: McpUnity, params: any = {}): Promise<CallTo
       returnOnlyFailures,
       returnWithLogs
     }
-  });
+  }, { timeout: LONG_RUNNING_TIMEOUT_MS });
   
   // Process the test results
   if (!response.success) {

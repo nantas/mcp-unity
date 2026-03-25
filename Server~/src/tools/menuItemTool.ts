@@ -7,6 +7,7 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 // Constants for the tool
 const toolName = 'execute_menu_item';
+const LONG_RUNNING_TIMEOUT_MS = 120000;
 const toolDescription = 'Executes a Unity menu item by path';
 const paramsSchema = z.object({
   menuPath: z.string().describe('The path to the menu item to execute (e.g. "GameObject/Create Empty")')
@@ -55,7 +56,7 @@ async function toolHandler(mcpUnity: McpUnity, params: any): Promise<CallToolRes
   const response = await mcpUnity.sendRequest({
     method: toolName,
     params: { menuPath }
-  });
+  }, { timeout: LONG_RUNNING_TIMEOUT_MS });
   
   if (!response.success) {
     throw new McpUnityError(

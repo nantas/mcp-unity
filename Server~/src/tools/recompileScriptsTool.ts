@@ -7,6 +7,7 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 // Constants for the tool
 const toolName = 'recompile_scripts';
+const LONG_RUNNING_TIMEOUT_MS = 120000;
 const toolDescription = 'Recompiles all scripts in the Unity project.';
 const paramsSchema = z.object({
   returnWithLogs: z.boolean().optional().default(true).describe('Whether to return compilation logs'),
@@ -63,7 +64,7 @@ async function toolHandler(mcpUnity: McpUnity, params: z.infer<typeof paramsSche
       returnWithLogs,
       logsLimit
     }
-  });
+  }, { timeout: LONG_RUNNING_TIMEOUT_MS });
 
   if (!response.success) {
     throw new McpUnityError(
