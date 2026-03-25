@@ -19,7 +19,9 @@ export enum ConnectionState {
  */
 export const UnityCloseCode = {
   /** Unity is entering Play mode - use fast polling instead of backoff */
-  PLAY_MODE: 4001
+  PLAY_MODE: 4001,
+  /** Unity is reloading assemblies - use fast polling instead of backoff */
+  ASSEMBLY_RELOAD: 4002
 } as const;
 
 /**
@@ -88,6 +90,7 @@ export class UnityConnection extends EventEmitter {
   private reconnectTimer: NodeJS.Timeout | null = null;
   private isManualDisconnect: boolean = false;
   private isPlayModeReconnect: boolean = false;  // True when reconnecting due to Unity Play mode
+  private isLifecycleReconnect: boolean = false; // True when reconnecting due to known Unity lifecycle transitions
 
   // Heartbeat state
   private heartbeatTimer: NodeJS.Timeout | null = null;
@@ -242,6 +245,7 @@ export class UnityConnection extends EventEmitter {
         // Reset reconnection state on successful connection
         this.reconnectAttempt = 0;
         this.isPlayModeReconnect = false;  // Clear Play mode flag
+        this.isLifecycleReconnect = false;
         this.lastPongTime = Date.now();
 
         this.setState(ConnectionState.Connected, 'Connection established');
@@ -271,10 +275,16 @@ export class UnityConnection extends EventEmitter {
         const reason = event.reason || `Code: ${event.code}`;
         this.logger.debug(`WebSocket closed: ${reason}`);
 
-        // Check if Unity is entering Play mode (custom close code 4001)
+        // Check if Unity is transitioning through known lifecycle events.
+        if (event.code === UnityCloseCode.PLAY_MODE || event.code === UnityCloseCode.ASSEMBLY_RELOAD) {
+          this.isLifecycleReconnect = true;
+        }
+
         if (event.code === UnityCloseCode.PLAY_MODE) {
           this.logger.info('Unity entering Play mode - using fast polling for reconnection');
           this.isPlayModeReconnect = true;
+        } else if (event.code === UnityCloseCode.ASSEMBLY_RELOAD) {
+          this.logger.info('Unity assembly reload detected - using fast polling for reconnection');
         }
 
         // Clear WebSocket reference

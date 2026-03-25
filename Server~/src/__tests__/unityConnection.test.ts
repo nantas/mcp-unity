@@ -161,6 +161,22 @@ describe('UnityConnection', () => {
       expect(connection.isConnecting).toBe(true);
     });
   });
+
+  describe('Lifecycle reconnect handling', () => {
+    it('recognizes assembly-reload close code (4002) as lifecycle reconnect mode', async () => {
+      const connectPromise = connection.connect();
+      const wsCtor = (await import('ws')).default as unknown as jest.Mock;
+      const socket = wsCtor.mock.results[wsCtor.mock.results.length - 1].value;
+
+      socket.onopen();
+      await connectPromise;
+
+      socket.onclose({ code: 4002, reason: 'Unity assembly reload' });
+
+      expect((connection as any).isLifecycleReconnect).toBe(true);
+      expect(connection.connectionState).toBe(ConnectionState.Reconnecting);
+    });
+  });
 });
 
 describe('ConnectionState Enum', () => {
