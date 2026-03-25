@@ -48,6 +48,7 @@ MCP Unity is an implementation of the Model Context Protocol for Unity Editor, a
 - Multiple MCP/Node clients can stay connected to the same Unity Editor at the same time.
 - Phase 1 uses single-writer admission: read operations continue normally, but conflicting write operations return `busy_error` instead of disconnecting another client.
 - `busy_error` is a normal request response. MCP clients should treat it as retryable business feedback, not as a transport failure that requires reconnecting.
+- Play Mode and assembly reload may temporarily close the bridge (`4001`/`4002`) and should be handled as expected lifecycle reconnect paths.
 
 ## Recommended Local Installation Modes
 
@@ -322,7 +323,8 @@ By default, the WebSocket server runs on port '8090'. You can change this port i
 
 ## Optional: Set Timeout
 
-By default, the timeout between the MCP server and the WebSocket is 10 seconds.
+By default, the request timeout between the MCP server and the Unity bridge is 60 seconds.
+Long-running tools (for example tests, script recompilation, or menu actions that trigger refresh/recompile) may use per-request overrides up to 120 seconds.
 You can change depending on the OS you are using:
 
 1. Open the Unity Editor

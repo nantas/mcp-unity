@@ -18,6 +18,7 @@
 - **Connection policy**: multiple WebSocket clients may coexist; Unity no longer kicks the previous client when a new one connects.
 - **Execution policy**: phase 1 uses single-writer admission only. `Read` operations pass through; conflicting `Write` / `CompositeWrite` operations return `busy_error`.
 - **Error boundary**: `busy_error` and `project_mismatch_error` are normal request responses and must not trigger Node reconnect logic.
+- **Lifecycle close codes**: `4001` for Play Mode transitions, `4002` for assembly reload; clients should treat both as expected transient reconnect paths.
 
 ### Repo layout (where to change what)
 ```
@@ -56,7 +57,7 @@ The Unity settings file is the shared contract:
 - **Path**: `ProjectSettings/McpUnitySettings.json`
 - **Fields**
   - **Port** (default **8090**): Unity WebSocket server port.
-  - **RequestTimeoutSeconds** (default **10**): Node request timeout (Node reads this if the settings file is discoverable).
+  - **RequestTimeoutSeconds** (default **60**): Node request timeout (Node reads this if the settings file is discoverable).
   - **AllowRemoteConnections** (default **false**): Unity binds to `0.0.0.0` when enabled; otherwise `localhost`.
   - **EnableInfoLogs**: Unity console logging verbosity.
   - **NpmExecutablePath**: optional npm path for Unity-driven install/build.
@@ -64,7 +65,7 @@ The Unity settings file is the shared contract:
 Node reads config from `../ProjectSettings/McpUnitySettings.json` relative to **its current working directory**. If not found, Node falls back to:
 - **host**: `localhost`
 - **port**: `8090`
-- **timeout**: `10s`
+- **timeout**: `60s`
 
 Node workspace root used for project-affinity validation is resolved in this order:
 - `MCP_UNITY_WORKSPACE_ROOT` (if set)
@@ -120,9 +121,10 @@ Node workspace root used for project-affinity validation is resolved in this ord
 - **Name mismatch**: Node `toolName`/`resourceName` must equal Unity `Name` exactly, or Unity responds `unknown_method`.
 - **Long main-thread work**: synchronous `Execute()` blocks the Unity editor; use async patterns for heavy operations.
 - **Writer conflicts**: phase 1 does not queue conflicting writes. MCP callers must handle `busy_error` as a retryable business response.
+- **Timeout expectations**: default request timeout is `60s`; long-running tools may use per-request overrides up to `120s` (for example tests/recompile/menu actions that trigger refresh).
 - **Host-project install mode**: for this fork, prefer a local embedded package path (`Packages/com.gamelovers.mcp-unity`) via symlink for development or copied snapshot for personal installation, and keep it ignored in the host project's `.gitignore`.
 - **Remote connections**: Unity must bind `0.0.0.0` (`AllowRemoteConnections=true`) and Node must target the correct host (`UNITY_HOST`).
-- **Unity domain reload**: the server stops during script reloads and may restart; avoid relying on persistent in-memory state across reloads.
+- **Unity domain reload**: the server stops during script reloads (close code `4002`) and may restart; avoid relying on persistent in-memory state across reloads.
 - **Multiplayer Play Mode**: Clone instances automatically skip server startup; only the main editor hosts the MCP server.
 - **Schema compatibility across clients**: avoid reusing the same nested Zod object instance for multiple sibling fields (for example `position`, `rotation`, `scale`). Some MCP clients fail on local refs like `#/properties/position`; prefer creating a fresh nested schema per field.
 

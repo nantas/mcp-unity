@@ -15,7 +15,7 @@ namespace McpUnity.Unity
         // Constants
         public const string ServerVersion = "1.2.0";
         public const string PackageName = "com.gamelovers.mcp-unity";
-        public const int RequestTimeoutMinimum = 10;
+        public const int RequestTimeoutMinimum = 60;
         
         // Paths
         private const string SettingsPath = "ProjectSettings/McpUnitySettings.json";

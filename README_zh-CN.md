@@ -48,6 +48,7 @@ MCP Unity 是 Model Context Protocol 在 Unity 编辑器中的实现，允许 AI
 - 多个 MCP / Node 客户端现在可以同时连接到同一个 Unity Editor。
 - 第一阶段采用“单写准入”策略：读操作可继续正常执行，但冲突的写操作会返回 `busy_error`，而不是挤掉其他客户端连接。
 - `busy_error` 是正常的请求响应。MCP 客户端应将其视为可重试的业务反馈，而不是需要触发重连的传输故障。
+- 进入 Play Mode 或 Assembly Reload 时，桥接可能短暂断开（`4001`/`4002`），应视为预期生命周期重连路径。
 
 ## 推荐的本地安装模式
 
@@ -313,7 +314,8 @@ MCP Unity 通过将 Unity `Library/PackedCache` 文件夹添加到您的工作�
 
 ## 可选：设置超时
 
-默认情况下，MCP 服务器与 WebSocket 之间的超时时间为 10 秒。
+默认情况下，MCP 服务器与 Unity Bridge 之间的请求超时时间为 60 秒。
+长耗时工具（例如测试、脚本重编译、会触发刷新/重编译的菜单操作）可按请求覆盖到 120 秒。
 您可以根据您使用的操作系统进行更改：
 
 1. 打开 Unity 编辑器
